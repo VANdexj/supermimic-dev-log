@@ -1,7 +1,7 @@
 # SuperMimic — 个人开发与复现记录
 
 本仓库用于保存个人开发修改、RTX 3060 Laptop 本机复现实验及结果记录。
-计划托管于 `VANdexj/supermimic-dev-log`（待 GitHub 登录恢复后创建）。
+个人仓库：[VANdexj/supermimic-dev-log](https://github.com/VANdexj/supermimic-dev-log)（私有、独立维护）。
 基于 [zita-ch/supermimic_vibed](https://github.com/zita-ch/supermimic_vibed)，
 独立维护并保留原始提交历史与 MIT 许可证。原项目介绍和作者署名保留如下。
 

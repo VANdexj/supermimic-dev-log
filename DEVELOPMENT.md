@@ -2,7 +2,7 @@
 
 ## 仓库来源
 
-- 计划创建：`VANdexj/supermimic-dev-log`（私有、独立仓库；待 GitHub 登录恢复）。
+- 个人仓库：<https://github.com/VANdexj/supermimic-dev-log>（私有、独立仓库）。
 - 原始仓库：<https://github.com/zita-ch/supermimic_vibed>。
 - 初始基线提交：`a1508d42c9d1699a52e8233ab16d08c488441ab9`。
 - 保留上游 Git 历史、作者署名和 [MIT 许可证](LICENSE)。
@@ -23,8 +23,7 @@
 
 ## 日常管理
 
-创建成功后，将 `origin` 指向个人仓库、`upstream` 指向原始仓库，默认推送到 `origin`。
-目前仍保留原来的远程配置，以下命令适用于新仓库配置完成后。
+`origin` 指向个人仓库，`upstream` 指向原始仓库，默认推送到 `origin`。
 
 ```bash
 # 开始一项开发
