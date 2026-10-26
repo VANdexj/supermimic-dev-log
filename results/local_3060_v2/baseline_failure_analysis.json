@@ -1,0 +1,220 @@
+{
+  "source": "results/local_3060/summary.json",
+  "checkpoint": "logs/local_3060/ckpt_023473.pt",
+  "norm_return": 0.5375851988792419,
+  "n_failed": 20,
+  "failure_causes": {
+    "tilt": 3,
+    "height": 17
+  },
+  "failed_clips": [
+    {
+      "clip": "dance1_subject1",
+      "first_failure_time_s": 106.98,
+      "completion_fraction": 0.8137836604290278,
+      "height_error_m": 0.21277546882629395,
+      "tilt_error": 0.8172345161437988,
+      "termination_reasons": [
+        "tilt"
+      ]
+    },
+    {
+      "clip": "dance2_subject1",
+      "first_failure_time_s": 64.9,
+      "completion_fraction": 0.2876008153859789,
+      "height_error_m": 0.2542336583137512,
+      "tilt_error": 0.0389258973300457,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "dance2_subject4",
+      "first_failure_time_s": 58.88,
+      "completion_fraction": 0.26092351325002217,
+      "height_error_m": 0.2566409409046173,
+      "tilt_error": 0.18525511026382446,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "dance2_subject5",
+      "first_failure_time_s": 139.3,
+      "completion_fraction": 0.6173003633785341,
+      "height_error_m": 0.2565059959888458,
+      "tilt_error": 0.0694652870297432,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fallAndGetUp1_subject1",
+      "first_failure_time_s": 8.16,
+      "completion_fraction": 0.04851367419738407,
+      "height_error_m": 0.255649209022522,
+      "tilt_error": 0.10718995332717896,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fallAndGetUp1_subject4",
+      "first_failure_time_s": 6.86,
+      "completion_fraction": 0.04078478002378121,
+      "height_error_m": 0.13389408588409424,
+      "tilt_error": 0.8415641784667969,
+      "termination_reasons": [
+        "tilt"
+      ]
+    },
+    {
+      "clip": "fallAndGetUp1_subject5",
+      "first_failure_time_s": 8.76,
+      "completion_fraction": 0.052080856123662304,
+      "height_error_m": 0.26498499512672424,
+      "tilt_error": 0.44599026441574097,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fallAndGetUp2_subject2",
+      "first_failure_time_s": 15.120000000000001,
+      "completion_fraction": 0.09225137278828555,
+      "height_error_m": 0.252435564994812,
+      "tilt_error": 0.21412232518196106,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fallAndGetUp2_subject3",
+      "first_failure_time_s": 15.5,
+      "completion_fraction": 0.09456985967053082,
+      "height_error_m": 0.26429295539855957,
+      "tilt_error": 0.3036593496799469,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fallAndGetUp3_subject1",
+      "first_failure_time_s": 10.540000000000001,
+      "completion_fraction": 0.10317149569303054,
+      "height_error_m": 0.27518126368522644,
+      "tilt_error": 0.6660497188568115,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fight1_subject2",
+      "first_failure_time_s": 194.16,
+      "completion_fraction": 0.7929429061504534,
+      "height_error_m": 0.2740958333015442,
+      "tilt_error": 0.21887736022472382,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fight1_subject3",
+      "first_failure_time_s": 75.4,
+      "completion_fraction": 0.30793106264804376,
+      "height_error_m": 0.25092387199401855,
+      "tilt_error": 0.10850536823272705,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "fightAndSports1_subject1",
+      "first_failure_time_s": 10.36,
+      "completion_fraction": 0.04226501305483029,
+      "height_error_m": 0.25584208965301514,
+      "tilt_error": 0.3167668581008911,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "jumps1_subject2",
+      "first_failure_time_s": 191.58,
+      "completion_fraction": 0.7838147451108747,
+      "height_error_m": 0.2511688470840454,
+      "tilt_error": 0.45530760288238525,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "run1_subject5",
+      "first_failure_time_s": 184.12,
+      "completion_fraction": 0.7742640874684609,
+      "height_error_m": 0.25332629680633545,
+      "tilt_error": 0.21130305528640747,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "walk2_subject1",
+      "first_failure_time_s": 194.94,
+      "completion_fraction": 0.8185253611017803,
+      "height_error_m": 0.19143450260162354,
+      "tilt_error": 0.8438718318939209,
+      "termination_reasons": [
+        "tilt"
+      ]
+    },
+    {
+      "clip": "walk2_subject3",
+      "first_failure_time_s": 188.12,
+      "completion_fraction": 0.7898891501511589,
+      "height_error_m": 0.27626532316207886,
+      "tilt_error": 0.13443595170974731,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "walk3_subject1",
+      "first_failure_time_s": 186.82,
+      "completion_fraction": 0.7575831305758313,
+      "height_error_m": 0.25297656655311584,
+      "tilt_error": 0.5251842737197876,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "walk3_subject3",
+      "first_failure_time_s": 175.86,
+      "completion_fraction": 0.7131386861313869,
+      "height_error_m": 0.27053743600845337,
+      "tilt_error": 0.24076437950134277,
+      "termination_reasons": [
+        "height"
+      ]
+    },
+    {
+      "clip": "walk3_subject4",
+      "first_failure_time_s": 218.6,
+      "completion_fraction": 0.8864557988645579,
+      "height_error_m": 0.251000314950943,
+      "tilt_error": 0.24376335740089417,
+      "termination_reasons": [
+        "height"
+      ]
+    }
+  ],
+  "training_exposure": {
+    "local_sim_transitions": 3759744,
+    "reference_sim_transitions_at_14000": 143622144,
+    "local_wm_windows": 3004544,
+    "reference_wm_windows_at_14000": 286720000,
+    "local_policy_rollouts": 735136,
+    "reference_policy_rollouts_at_14000": 55296000
+  }
+}

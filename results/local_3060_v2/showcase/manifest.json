@@ -1,0 +1,70 @@
+{
+  "checkpoint": "logs/local_3060_v2/ckpt_048000.pt",
+  "evaluation": "recorded_eval.json",
+  "trajectory": "trajectories.npz",
+  "duration_s": 60,
+  "fps": 25,
+  "resolution": [
+    1280,
+    720
+  ],
+  "playback_speed": 1,
+  "reference_xy_anchored_to_policy": true,
+  "scenes": [
+    {
+      "label": "DANCE / FULL BODY CONTROL",
+      "clip": "dance2_subject3",
+      "source_start_s": 128,
+      "source_end_s": 138,
+      "video_start_s": 0,
+      "full_clip_return": 0.8604,
+      "full_clip_completed": true
+    },
+    {
+      "label": "FIGHT / STRIKES & FOOTWORK",
+      "clip": "fight1_subject5",
+      "source_start_s": 147,
+      "source_end_s": 157,
+      "video_start_s": 10,
+      "full_clip_return": 0.8214,
+      "full_clip_completed": true
+    },
+    {
+      "label": "JUMPS / TAKEOFF & LANDING",
+      "clip": "jumps1_subject1",
+      "source_start_s": 50,
+      "source_end_s": 60,
+      "video_start_s": 20,
+      "full_clip_return": 0.8214,
+      "full_clip_completed": true
+    },
+    {
+      "label": "SPRINT / DYNAMIC LOCOMOTION",
+      "clip": "sprint1_subject2",
+      "source_start_s": 193,
+      "source_end_s": 203,
+      "video_start_s": 30,
+      "full_clip_return": 0.8239,
+      "full_clip_completed": true
+    },
+    {
+      "label": "RECOVERY / FALL & GET UP",
+      "clip": "fallAndGetUp3_subject1",
+      "source_start_s": 64,
+      "source_end_s": 74,
+      "video_start_s": 40,
+      "full_clip_return": 0.7866,
+      "full_clip_completed": true
+    },
+    {
+      "label": "DANCE / FINISH IN MOTION",
+      "clip": "dance1_subject3",
+      "source_start_s": 105,
+      "source_end_s": 115,
+      "video_start_s": 50,
+      "full_clip_return": 0.854,
+      "full_clip_completed": true
+    }
+  ],
+  "sha256": "333bf71100d6091d0a275a412e0450102829634e7d749377d3b4c34363b92aa4"
+}

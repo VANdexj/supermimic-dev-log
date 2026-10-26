@@ -112,7 +112,8 @@ def main():
                 draw.text(xy, txt, fill=(20, 20, 20), font=font)
             ff.stdin.write(np.asarray(img).tobytes())
     ff.stdin.close()
-    ff.wait()
+    if ff.wait() != 0:
+        raise RuntimeError("ffmpeg failed to encode the video")
     print("wrote", a.out)
 
 

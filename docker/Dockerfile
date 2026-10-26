@@ -5,3 +5,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends tmux ffmpeg uti
 # Register the NVIDIA EGL vendor (the driver library is injected by the NVIDIA container runtime);
 # without it GLVND only knows Mesa and MuJoCo's offscreen renderer falls back to CPU rasterization.
 COPY 10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+USER isaaclab

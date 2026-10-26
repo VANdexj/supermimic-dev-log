@@ -25,6 +25,7 @@ parser.add_argument("--run_dir", type=str, required=True)
 parser.add_argument("--watch", action="store_true")
 parser.add_argument("--ckpt", type=str, default=None, help="evaluate one checkpoint")
 parser.add_argument("--record", type=str, default=None, help="save trajectories (npz) for rendering")
+parser.add_argument("--output", type=str, default=None, help="write this evaluation to a separate JSON file")
 parser.add_argument("--motion_dir", type=str, default=os.path.join(REPO, "data", "lafan1_g1"))
 parser.add_argument("--every", type=int, default=1, help="evaluate every n-th checkpoint")
 add_launcher_args(parser)
@@ -36,7 +37,7 @@ import torch
 import supermimic.networks as networks
 from supermimic.env import TrackingSim, make_sim
 from supermimic.kinematics import G1Kinematics
-from supermimic.mdp import MAX_STEP_REWARD, OBS_DIM, MDP
+from supermimic.mdp import MAX_STEP_REWARD, OBS_DIM, MDP, unflatten_state
 from supermimic.motion import MotionLib
 from supermimic.networks import Policy
 from supermimic.robot import default_joint_pos_list
@@ -64,6 +65,13 @@ def evaluate(env: TrackingSim, ck: dict, record: str | None = None) -> dict:
     clip_end = motion.clip_end.clone()
     ret = torch.zeros(C, device=dev)
     steps = torch.zeros(C, device=dev)
+    fail_step = torch.zeros(C, device=dev)
+    height_error = torch.zeros(C, device=dev)
+    tilt_error = torch.zeros(C, device=dev)
+    max_height_error = torch.zeros(C, device=dev)
+    max_tilt_error = torch.zeros(C, device=dev)
+    height_failure = torch.zeros(C, dtype=torch.bool, device=dev)
+    tilt_failure = torch.zeros(C, dtype=torch.bool, device=dev)
     hist = None
     traj = {"root_p": [], "root_quat": [], "q": [], "f": [], "alive": []}
     while not bool(env.done_eval.all()):
@@ -80,14 +88,41 @@ def evaluate(env: TrackingSim, ck: dict, record: str | None = None) -> dict:
         out = env.step(a)
         ret += torch.where(alive, out["r"], 0.0)
         steps += alive.float()
+        S1 = unflatten_state(out["s1"])
+        next_f = out["f"] + 1
+        ez = (motion.root_p[next_f, 2] - S1[0][:, 2]).abs()
+        et = (motion.root_R[next_f, 2, 2] - S1[1][:, 2, 2]).abs()
+        height_error = torch.where(alive, ez, height_error)
+        tilt_error = torch.where(alive, et, tilt_error)
+        max_height_error = torch.maximum(max_height_error, torch.where(alive, ez, 0.0))
+        max_tilt_error = torch.maximum(max_tilt_error, torch.where(alive, et, 0.0))
+        failed_now = alive & out["term"]
+        fail_step = torch.where(failed_now, steps, fail_step)
+        height_failure |= failed_now & (ez > mdp.cfg.term_height)
+        tilt_failure |= failed_now & (et > mdp.cfg.term_tilt)
         env.f = torch.minimum(env.f, clip_end - 1)  # finished clips keep stepping; keep f+1 in range
     norm = ret / ((motion.clip_len - 1).float() * MAX_STEP_REWARD)
     res = {
+        "n_clips": C,
         "norm_return": norm.mean().item(),
         "norm_return_framew": (ret.sum() / ((motion.clip_len - 1).sum() * MAX_STEP_REWARD)).item(),
         "n_failed": int(env.failed_eval.sum().item()),
         "failed": [motion.names[i] for i in env.failed_eval.nonzero().flatten().tolist()],
         "per_clip": {motion.names[i]: round(norm[i].item(), 4) for i in range(C)},
+        "per_clip_details": {
+            name: {
+                "steps": int(steps[i].item()),
+                "total_steps": int(motion.clip_len[i].item()) - 1,
+                "completion_fraction": (steps[i] / (motion.clip_len[i] - 1)).item(),
+                "first_failure_time_s": fail_step[i].item() * 0.02 if env.failed_eval[i] else None,
+                "termination_reasons": [reason for reason, mask in (("height", height_failure), ("tilt", tilt_failure)) if mask[i]],
+                "height_error_m": height_error[i].item(),
+                "tilt_error": tilt_error[i].item(),
+                "max_height_error_m": max_height_error[i].item(),
+                "max_tilt_error": max_tilt_error[i].item(),
+            }
+            for i, name in enumerate(motion.names)
+        },
     }
     if record:
         np.savez_compressed(record, names=np.array(motion.names), **{k: torch.stack(v).numpy() for k, v in traj.items()},
@@ -102,7 +137,11 @@ with launch_simulation(sim_cfg, args):
     if args.ckpt:
         ck = torch.load(args.ckpt, map_location=dev)
         res = evaluate(env, ck, args.record)
-        print(json.dumps({k: v for k, v in res.items() if k != "per_clip"}, indent=1))
+        res.update(iteration=ck["iteration"], train_wall_h=ck["wall_time"] / 3600,
+                   saved_at=ck["saved_at"], eval_at=time.strftime("%Y-%m-%d %H:%M:%S"), config=ck["args"])
+        output = args.output or os.path.splitext(args.ckpt)[0] + "_eval.json"
+        json.dump(res, open(output, "w"), indent=1)
+        print(json.dumps({k: v for k, v in res.items() if k not in ("per_clip", "per_clip_details", "config")}, indent=1))
         sys.exit(0)
     out_csv = os.path.join(args.run_dir, "eval.csv")
     done = set()
@@ -119,6 +158,8 @@ with launch_simulation(sim_cfg, args):
             ck = torch.load(c, map_location=dev)
             t0 = time.time()
             res = evaluate(env, ck)
+            res.update(iteration=it, train_wall_h=ck["wall_time"] / 3600, saved_at=ck["saved_at"],
+                       eval_at=time.strftime("%Y-%m-%d %H:%M:%S"), config=ck["args"])
             line = f"{it},{ck['wall_time'] / 3600:.4f},{ck['saved_at']},{time.strftime('%Y-%m-%d %H:%M:%S')},{res['norm_return']:.4f},{res['norm_return_framew']:.4f},{res['n_failed']},{'|'.join(res['failed'])}\n"
             open(out_csv, "a").write(line)
             json.dump(res, open(c.replace(".pt", "_eval.json"), "w"), indent=1)

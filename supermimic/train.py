@@ -6,6 +6,7 @@ import argparse
 import json
 import math
 import os
+import signal
 import sys
 import time
 
@@ -42,9 +43,31 @@ parser.add_argument("--motion_dir", type=str, default=os.path.join(REPO, "data",
 parser.add_argument("--log_dir", type=str, default=os.path.join(REPO, "logs", "run"))
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--resume", type=str, default=None)
+parser.add_argument("--no_compile", action="store_true", help="run eagerly to limit compiler memory use")
+parser.add_argument("--max_train_seconds", type=float, default=0, help="session time limit including warmup; 0 disables")
 parser.add_argument("--amp", type=str, default="bf16", choices=["none", "bf16"], help="autocast dtype for MLP matmuls")
+parser.add_argument("--resource_report", type=str, default=None, help="write peak CUDA memory and session throughput as JSON")
 add_launcher_args(parser)
 args = parser.parse_args()
+stop_requested = False
+
+
+def request_stop(signum, frame):
+    global stop_requested
+    stop_requested = True
+
+
+signal.signal(signal.SIGTERM, request_stop)
+signal.signal(signal.SIGINT, request_stop)
+if args.buffer_steps < max(args.wm_window, args.hist):
+    parser.error("--buffer_steps must cover --wm_window and --hist")
+if args.max_train_seconds < 0:
+    parser.error("--max_train_seconds must be nonnegative")
+if min(args.num_envs, args.wm_batch, args.pi_batch, args.wm_batches, args.horizon,
+       args.ckpt_every, args.log_every, args.critic_minibatches) < 1 or args.utd <= 0:
+    parser.error("environment counts, batches, intervals, horizon and UTD must be positive")
+if args.pi_batch * args.horizon < args.critic_minibatches:
+    parser.error("imagined transitions must cover all critic minibatches")
 
 import torch
 import torch.nn as nn
@@ -82,9 +105,17 @@ opt_v = torch.optim.Adam(critic.parameters(), lr=args.lr)
 start_it, wall_offset, sim_steps = 0, 0.0, 0
 if args.resume:
     ck = torch.load(args.resume, map_location=dev)
+    if not all(k in ck for k in ("critic", "opt_wm", "opt_pi", "opt_v")):
+        parser.error("--resume requires last.pt (with critic and optimizer states)")
+    for key in ("goal_frames", "hist"):
+        if ck["args"][key] != getattr(args, key):
+            parser.error(f"--{key} must match the resumed checkpoint")
     wm.load_state_dict(ck["wm"]), pi.load_state_dict(ck["pi"]), critic.load_state_dict(ck["critic"])
     opt_wm.load_state_dict(ck["opt_wm"]), opt_pi.load_state_dict(ck["opt_pi"]), opt_v.load_state_dict(ck["opt_v"])
     start_it, wall_offset, sim_steps = ck["iteration"], ck["wall_time"], ck["sim_steps"]
+    del ck
+    if args.iterations <= start_it:
+        parser.error("--iterations must exceed the resumed iteration")
 
 
 # per-component floors on the error normalization (pos, rot, lin vel, ang vel, q, qd increments)
@@ -125,11 +156,11 @@ def _critic_input(S, f, xi_n, g):
     return torch.cat((mdp.critic_features(S, f, xi_n), g), -1)
 
 
-wm_rollout = torch.compile(_wm_rollout)
-wm_err = torch.compile(_wm_err)
-imag_step = torch.compile(_imag_step)
-reward_term = torch.compile(_reward_term)
-critic_input_c = torch.compile(_critic_input)
+wm_rollout = _wm_rollout if args.no_compile else torch.compile(_wm_rollout)
+wm_err = _wm_err if args.no_compile else torch.compile(_wm_err)
+imag_step = _imag_step if args.no_compile else torch.compile(_imag_step)
+reward_term = _reward_term if args.no_compile else torch.compile(_reward_term)
+critic_input_c = _critic_input if args.no_compile else torch.compile(_critic_input)
 
 
 def lr_at(it: int) -> float:
@@ -290,12 +321,15 @@ with launch_simulation(sim_cfg, args):
                 stats["done"].append(out["done"].float().sum())
 
     stats = {"r": [], "ep_len": [], "ep_ret": [], "term": [], "done": []}
-    if start_it == 0:
-        collect(args.warmup_steps, stats)
-    log_f = open(os.path.join(args.log_dir, "train_log.csv"), "a")
-    if start_it == 0:
-        log_f.write("iteration,wall_h,sim_steps,wm_loss,wm_err8,pi_loss,v_loss,imag_rew,pi_gradnorm,imag_survival,sim_rew,ep_len,ep_ret_norm,term_frac,it_per_s,lr\n")
+    session_start = time.monotonic()
     t_start = time.time() - wall_offset
+    # Replay and observation histories are not checkpointed, including on resume.
+    collect(max(args.warmup_steps, args.wm_window, args.hist), stats)
+    log_path = os.path.join(args.log_dir, "train_log.csv")
+    needs_header = not os.path.exists(log_path) or os.path.getsize(log_path) == 0
+    log_f = open(os.path.join(args.log_dir, "train_log.csv"), "a")
+    if needs_header:
+        log_f.write("iteration,wall_h,sim_steps,wm_loss,wm_err8,pi_loss,v_loss,imag_rew,pi_gradnorm,imag_survival,sim_rew,ep_len,ep_ret_norm,term_frac,it_per_s,lr\n")
     t_log = time.time()
     step_acc = 0.0
     agg = {"wm": [], "wm8": [], "pi": [], "v": [], "ir": [], "gn": [], "surv": []}
@@ -324,9 +358,11 @@ with launch_simulation(sim_cfg, args):
                 torch.cuda.synchronize(); tp3 = time.time()
                 print(f"[prof] collect {1e3*(tp1-tp0):.0f} ms ({n} steps) | wm {1e3*(tp2-tp1):.0f} ms | policy+critic {1e3*(tp3-tp2):.0f} ms", flush=True)
             agg["pi"].append(pl), agg["v"].append(vl), agg["ir"].append(ir), agg["gn"].append(gn), agg["surv"].append(surv)
-        if (it + 1) % args.log_every == 0:
+        budget_reached = stop_requested or bool(args.max_train_seconds and time.monotonic() - session_start >= args.max_train_seconds)
+        final_iteration = budget_reached or it + 1 == args.iterations
+        if (it + 1) % args.log_every == 0 or final_iteration:
             mean = lambda x: float(sum(float(v) for v in x) / max(len(x), 1))  # noqa: E731
-            ips = args.log_every / (time.time() - t_log)
+            ips = len(agg["wm"]) / (time.time() - t_log)
             t_log = time.time()
             wall_h = (time.time() - t_start) / 3600
             term_frac = float(sum(float(v) for v in stats["term"]) / max(sum(float(v) for v in stats["done"]), 1))
@@ -338,7 +374,7 @@ with launch_simulation(sim_cfg, args):
                   f"| sim_r {row[10]:.3f} ep_len {row[11]:.1f} ep_ret {row[12]:.3f} term {term_frac:.2f} | {ips:.2f} it/s", flush=True)  # fmt: skip
             stats = {k: [] for k in stats}
             agg = {k: [] for k in agg}
-        if (it + 1) % args.ckpt_every == 0 or it + 1 == args.iterations:
+        if (it + 1) % args.ckpt_every == 0 or final_iteration:
             ck = {"wm": wm.state_dict(), "pi": pi.state_dict(), "critic": critic.state_dict(), "opt_wm": opt_wm.state_dict(),
                   "opt_pi": opt_pi.state_dict(), "opt_v": opt_v.state_dict(), "iteration": it + 1,
                   "wall_time": time.time() - t_start, "sim_steps": sim_steps, "args": vars(args),
@@ -350,3 +386,13 @@ with launch_simulation(sim_cfg, args):
             path = os.path.join(args.log_dir, f"ckpt_{it + 1:06d}.pt")
             torch.save(small, path + ".tmp")
             os.replace(path + ".tmp", path)
+        if budget_reached:
+            print(f"Session budget reached after {time.monotonic() - session_start:.1f}s; saved iteration {it + 1}", flush=True)
+            break
+    log_f.close()
+    if args.resource_report:
+        elapsed = time.monotonic() - session_start
+        json.dump({"iterations": it + 1 - start_it, "session_seconds": elapsed,
+                   "peak_cuda_allocated_bytes": torch.cuda.max_memory_allocated(),
+                   "peak_cuda_reserved_bytes": torch.cuda.max_memory_reserved()},
+                  open(args.resource_report, "w"), indent=2)

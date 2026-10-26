@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "file": "ckpt_048000.pt",
+      "size_bytes": 71782341,
+      "sha256": "0527af4e2ab670d488ebf56dc22ad14a2c3c6609956234b7de735983c6565eff"
+    },
+    {
+      "file": "ckpt_075614.pt",
+      "size_bytes": 71782405,
+      "sha256": "f65800cf600376a4fbfe20d7357b0b9219a4b5461e7c2dbd474f4e08a894eedd"
+    },
+    {
+      "file": "last.pt",
+      "size_bytes": 218548001,
+      "sha256": "dd1ff00b3d06597778184c75c88ca26de228dafba35551fc6365de034b972de9"
+    }
+  ]
+}

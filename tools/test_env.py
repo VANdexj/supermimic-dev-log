@@ -39,6 +39,7 @@ with launch_simulation(sim_cfg, args):
     names = ["p", "R", "v", "w", "q", "qd"]
     for n, a, b in zip(names, S, ref):
         print(f"roundtrip {n}: max err {(a - b).abs().max().item():.2e}")
+        torch.testing.assert_close(a, b, atol=1e-5, rtol=1e-5, msg=f"state roundtrip: {n}")
     # FK vs sim body frames
     d = env.robot.data
     ids = [env.robot.body_names.index(b) for b in TRACKED_BODIES]
@@ -52,12 +53,17 @@ with launch_simulation(sim_cfg, args):
     sv = d.body_link_vel_w.torch[:, ids]
     print("FK linvel err", (bv - sv[..., :3]).norm(dim=-1).max().item(), " angvel err", (bw - sv[..., 3:]).norm(dim=-1).max().item())
     print("ref body vs FK(sim) pos err", (motion.body_p[frames] - bp).norm(dim=-1).max().item())
+    torch.testing.assert_close(bp, sp, atol=1e-5, rtol=1e-5)
+    torch.testing.assert_close(bR, sR_xyzw, atol=1e-5, rtol=1e-5)
+    torch.testing.assert_close(bv, sv[..., :3], atol=1e-4, rtol=1e-5)
+    torch.testing.assert_close(bw, sv[..., 3:], atol=1e-4, rtol=1e-5)
     # open-loop reference playback via joint targets
     rs = []
     for t in range(150):
         f1 = env.f + 1
         a = (motion.q[f1] - env.default_q) / env.alpha
         out = env.step(a)
+        assert torch.isfinite(out["r"]).all(), "nonfinite playback reward"
         rs.append(out["r"].mean().item() / 0.1)
         if t % 25 == 0:
             print(t, "norm reward", rs[-1], "term frac", env.failed_eval.float().mean().item(), "e_body_pos", out["terms"]["e_body_pos"].mean().item())
